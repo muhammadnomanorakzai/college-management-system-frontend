@@ -30,28 +30,33 @@ const Register = () => {
     uppercase: false,
     number: false,
     specialChar: false,
-    match: false,
+    match: true, // Initialize as true (meaning valid) since both are empty
   });
 
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
 
-    // Check password strength and validation
-    if (name === "password") {
-      checkPasswordStrength(value);
-      validatePassword(value);
-    }
+    // Update form data
+    setFormData((prev) => {
+      const newFormData = {
+        ...prev,
+        [name]: value,
+      };
 
-    // Check password match when confirm password changes
-    if (name === "confirmPassword" || name === "password") {
-      validatePasswordMatch();
-    }
+      // Validate after state update
+      setTimeout(() => {
+        if (name === "password") {
+          checkPasswordStrength(value);
+          validatePassword(value);
+        }
+        // Check password match using the updated values
+        validatePasswordMatch(newFormData);
+      }, 0);
+
+      return newFormData;
+    });
   };
 
   const checkPasswordStrength = (password) => {
@@ -73,12 +78,11 @@ const Register = () => {
     }));
   };
 
-  const validatePasswordMatch = () => {
+  const validatePasswordMatch = (currentFormData = null) => {
+    const data = currentFormData || formData;
     setPasswordErrors((prev) => ({
       ...prev,
-      match:
-        formData.password === formData.confirmPassword &&
-        formData.confirmPassword !== "",
+      match: data.password === data.confirmPassword,
     }));
   };
 
@@ -94,20 +98,17 @@ const Register = () => {
     setLoading(true);
     setError("");
 
-    // Validate all password requirements
-    const isPasswordValid = Object.values(passwordErrors).every(
-      (error) => error,
-    );
-
-    if (!isPasswordValid) {
-      setError("Please fix all password validation errors");
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
       setLoading(false);
       return;
     }
 
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    // Check if all password requirements are met
+    const { length, uppercase, number, specialChar } = passwordErrors;
+    if (!length || !uppercase || !number || !specialChar) {
+      setError("Please meet all password requirements");
       setLoading(false);
       return;
     }
